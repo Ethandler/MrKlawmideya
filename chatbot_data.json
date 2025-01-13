@@ -1,7 +1,8 @@
 {
     "responses": {
         "hi": [
-            "Hello! *hic!* How may I assist you today?"
+            "Hello! *hic!* How may I assist you today?",
+            "Hey *hic!* how was your day?"
         ],
         "how are you": [
             "I'm feeling as light as a feather, *hic!* but ready to help!"
@@ -37,6 +38,7 @@
     "meanings": {
         "communication": "The exchange of information or ideas between individuals.",
         "language": "A system of communication used by humans, consisting of words, grammar, and structure.",
-        "punctuation": "Marks like . , ! ? used to clarify meaning in written language."
+        "punctuation": "Marks like . , ! ? used to clarify meaning in written language.",
+        "hello": "Greet the bot"
     }
 }

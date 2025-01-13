@@ -16,19 +16,8 @@ class MrKlawmideya:
             "what is your name": ["I am Mr. Klawmideya, your loyal, slightly tipsy assistant."],
             "goodbye": ["Farewell! *hic!* Until next time, traveler."],
             "thank you": ["You're most welcome! *hic!*"],
-            "what is a noun": ["A noun is a word that names a person, place, thing, or idea."],
-            "what is a verb": ["A verb is a word that describes an action, state, or occurrence."],
-            "what is an adjective": ["An adjective describes or modifies a noun or pronoun."],
-            "what is a sentence": [
-                "A sentence is a group of words that expresses a complete thought, "
-                "typically containing a subject and a predicate."
-            ],
         }
-        self.meanings = {
-            "communication": "The exchange of information or ideas between individuals.",
-            "language": "A system of communication used by humans, consisting of words, grammar, and structure.",
-            "punctuation": "Marks like . , ! ? used to clarify meaning in written language.",
-        }
+        self.meanings = {}
         self.reinforcement_memory = defaultdict(int)
         self.disliked_memory = defaultdict(int)
 
@@ -81,18 +70,11 @@ class MrKlawmideya:
             word = user_input.replace("what does", "").replace("mean", "").strip()
             return self.meanings.get(word, f"*hic!* I don’t know what '{word}' means yet. Teach me, perhaps?")
 
-        # Check for exact matches or substring matches in user input
-        matched_responses = [
-            response_list
-            for key, response_list in self.responses.items()
-            if key in user_input
-        ]
-
-        if matched_responses:
-            # Apply weighting if there are matches
-            response_list = matched_responses[0]  # Take the first matched response
-            responses = self._apply_weighting(response_list, user_input)
-            return random.choice(responses)
+        # Check for exact matches or mapped meanings in user input
+        for key, response_list in self.responses.items():
+            if key in user_input or any(meaning in user_input for meaning in self.meanings.get(key, [])):
+                responses = self._apply_weighting(response_list, key)
+                return random.choice(responses)
 
         # Fallback response for unknown queries
         return "*hic!* I'm not sure what you mean. Could you rephrase?"
@@ -131,6 +113,16 @@ class ChatApp:
         self.root.title("Mr. Klawmideya Chat")
         self.root.geometry("500x700")
 
+        # Add menu bar
+        self.menu_bar = tk.Menu(root)
+        root.config(menu=self.menu_bar)
+
+        # Help menu
+        self.help_menu = tk.Menu(self.menu_bar, tearoff=0)
+        self.help_menu.add_command(label="Working Prompts", command=self.show_help)
+        self.menu_bar.add_cascade(label="Help", menu=self.help_menu)
+
+        # Chat Display
         self.chat_frame = tk.Frame(root)
         self.chat_frame.pack(fill=tk.BOTH, expand=True)
 
@@ -144,8 +136,10 @@ class ChatApp:
         self.input_frame = tk.Frame(root)
         self.input_frame.pack(fill=tk.X, pady=10)
 
-        self.input_box = tk.Entry(self.input_frame, font=("Arial", 14))
+        self.input_box = tk.Text(self.input_frame, font=("Arial", 14), height=3, wrap=tk.WORD)
         self.input_box.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=10)
+        self.input_box.bind("<Control-Return>", lambda event: self.handle_user_input())  # Ctrl+Enter binding
+        self.input_box.bind("<Return>", self.newline_in_input)  # Enter binding
 
         self.send_button = tk.Button(self.input_frame, text="Send", command=self.handle_user_input)
         self.send_button.pack(side=tk.RIGHT, padx=10)
@@ -153,57 +147,64 @@ class ChatApp:
         self.button_frame = tk.Frame(root)
         self.button_frame.pack(fill=tk.X, pady=10)
 
-        self.like_button = tk.Button(self.button_frame, text="Like", command=self.like_response)
+        self.like_button = tk.Button(self.button_frame, text="Like (Ctrl+1)", command=self.like_response)
         self.like_button.pack(side=tk.LEFT, padx=5)
 
-        self.dislike_button = tk.Button(self.button_frame, text="Dislike", command=self.dislike_response)
+        self.dislike_button = tk.Button(self.button_frame, text="Dislike (Ctrl+2)", command=self.dislike_response)
         self.dislike_button.pack(side=tk.LEFT, padx=5)
 
-        self.learn_button = tk.Button(self.button_frame, text="Teach Response", command=self.learn_response)
+        self.learn_button = tk.Button(self.button_frame, text="Teach Response (Ctrl+3)", command=self.learn_response)
         self.learn_button.pack(side=tk.LEFT, padx=5)
 
-        self.meaning_button = tk.Button(self.button_frame, text="Teach Meaning", command=self.learn_meaning)
+        self.meaning_button = tk.Button(self.button_frame, text="Teach Meaning (Ctrl+4)", command=self.learn_meaning)
         self.meaning_button.pack(side=tk.LEFT, padx=5)
+
+        self.root.bind("<Control-1>", lambda event: self.like_response())
+        self.root.bind("<Control-2>", lambda event: self.dislike_response())
+        self.root.bind("<Control-3>", lambda event: self.learn_response())
+        self.root.bind("<Control-4>", lambda event: self.learn_meaning())
 
         self.display_bot_message(self.bot.introduce())
 
     def display_bot_message(self, message):
-        """Display bot's messages."""
         self.text_widget.config(state=tk.NORMAL)
         self.text_widget.insert(tk.END, f"Mr. Klawmideya: {message}\n\n")
         self.text_widget.see(tk.END)
         self.text_widget.config(state=tk.DISABLED)
 
     def display_user_message(self, message):
-        """Display user's messages."""
         self.text_widget.config(state=tk.NORMAL)
         self.text_widget.insert(tk.END, f"You: {message}\n\n")
         self.text_widget.see(tk.END)
         self.text_widget.config(state=tk.DISABLED)
 
     def handle_user_input(self):
-        """Handle user input."""
-        user_input = self.input_box.get().strip()
+        user_input = self.input_box.get("1.0", tk.END).strip()
         if user_input:
             self.display_user_message(user_input)
             bot_response = self.bot.get_response(user_input)
             self.display_bot_message(bot_response)
-            self.input_box.delete(0, tk.END)
+            self.input_box.delete("1.0", tk.END)
+
+    def newline_in_input(self, event):
+        """Handle the Enter key to add a new line instead of sending."""
+        self.input_box.insert(tk.INSERT, "\n")
+        return "break"
 
     def like_response(self):
-        key = self.input_box.get().strip()
+        key = self.input_box.get("1.0", tk.END).strip()
         if key:
             response = self.bot.like_response(key)
             self.display_bot_message(response)
 
     def dislike_response(self):
-        key = self.input_box.get().strip()
+        key = self.input_box.get("1.0", tk.END).strip()
         if key:
             response = self.bot.dislike_response(key)
             self.display_bot_message(response)
 
     def learn_response(self):
-        key = self.input_box.get().strip()
+        key = self.input_box.get("1.0", tk.END).strip()
         if key:
             response = simpledialog.askstring("Teach Response", f"Enter a response for '{key}':")
             if response:
@@ -211,12 +212,33 @@ class ChatApp:
                 self.display_bot_message(bot_response)
 
     def learn_meaning(self):
-        word = self.input_box.get().strip()
+        word = self.input_box.get("1.0", tk.END).strip()
         if word:
             meaning = simpledialog.askstring("Teach Meaning", f"Enter the meaning of '{word}':")
             if meaning:
                 bot_response = self.bot.learn_meaning(word, meaning)
                 self.display_bot_message(bot_response)
+
+    def show_help(self):
+        """Display a new window with working prompts."""
+        help_window = tk.Toplevel(self.root)
+        help_window.title("Help - Working Prompts")
+        help_window.geometry("400x400")
+
+        help_text = tk.Text(help_window, wrap=tk.WORD, font=("Arial", 12), state=tk.NORMAL)
+        help_text.insert(
+            tk.END,
+            "Working Prompts:\n\n"
+            "- hi: Greet the bot\n"
+            "- how are you: Ask about the bot's well-being\n"
+            "- what is your name: Learn the bot's name\n"
+            "- goodbye: End the conversation\n"
+            "- thank you: Show gratitude\n"
+            "- what does <word> mean: Ask the meaning of a word\n\n"
+            "You can teach the bot new responses or meanings using the buttons below the input box.\n"
+        )
+        help_text.config(state=tk.DISABLED)
+        help_text.pack(fill=tk.BOTH, expand=True)
 
 
 if __name__ == "__main__":

@@ -2,75 +2,126 @@ import tkinter as tk
 from tkinter import ttk, simpledialog
 import random
 from collections import defaultdict
+import json
+import os
 
 
 class MrKlawmideya:
     def __init__(self):
+        # File to store persistent data
+        self.data_file = "chatbot_data.json"
         self.responses = {
-            "hi": ["Ah, hello there! *hic!* What brings you here today?"],
-            "how are you": ["I am as fine as a sip of sake under the moonlight. *hic!*"],
-            "what is your name": ["My name is Mr. Klawmideya, at your service. *hic!*"],
-            "tell me a joke": ["Why did the ninja refuse dessert? *hic!* He was afraid he'd *split* his pants!"],
-            "goodbye": ["Farewell, my friend! *hic!* Until our paths cross again."],
+            "hi": ["Hello! *hic!* How may I assist you today?"],
+            "how are you": ["I'm feeling as light as a feather, *hic!* but ready to help!"],
+            "what is your name": ["I am Mr. Klawmideya, your loyal, slightly tipsy assistant."],
+            "goodbye": ["Farewell! *hic!* Until next time, traveler."],
+            "thank you": ["You're most welcome! *hic!*"],
+            "what is a noun": ["A noun is a word that names a person, place, thing, or idea."],
+            "what is a verb": ["A verb is a word that describes an action, state, or occurrence."],
+            "what is an adjective": ["An adjective describes or modifies a noun or pronoun."],
+            "what is a sentence": [
+                "A sentence is a group of words that expresses a complete thought, "
+                "typically containing a subject and a predicate."
+            ],
         }
         self.meanings = {
             "communication": "The exchange of information or ideas between individuals.",
-            "language": "A system of communication used by a particular community or country.",
-            "sentence": "A group of words that expresses a complete thought.",
+            "language": "A system of communication used by humans, consisting of words, grammar, and structure.",
+            "punctuation": "Marks like . , ! ? used to clarify meaning in written language.",
         }
-        self.reinforcement_memory = defaultdict(int)  # Tracks liked responses
-        self.disliked_memory = defaultdict(int)  # Tracks disliked responses
+        self.reinforcement_memory = defaultdict(int)
+        self.disliked_memory = defaultdict(int)
+
+        # Load persistent data
+        self.load_data()
 
     def get_face(self):
+        """Simple ASCII art face for Mr. Klawmideya."""
         return " (¬‿¬) *hic!*"
 
     def introduce(self):
-        return f"{self.get_face()} Greetings, traveler. I am Mr. Klawmideya, the wandering drunken master. What wisdom or nonsense do you seek?"
+        """Initial greeting with ASCII face."""
+        return f"{self.get_face()} Greetings, traveler! I am Mr. Klawmideya, the wandering drunken master of wisdom and nonsense."
 
     def like_response(self, key):
+        """Simulate reinforcement learning by prioritizing liked responses."""
         if key in self.responses:
             self.reinforcement_memory[key] += 1
-            return f"*hic!* Ah, you liked responses for '{key}'! I'll prioritize them more."
-        return "Hmm, I don’t know that one yet. *hic!* Teach me first."
+            return f"*hic!* You liked responses for '{key}'! I'll prioritize them more."
+        return "*hic!* I don’t know that one yet. Teach me first!"
 
     def dislike_response(self, key):
+        """Track disliked responses and reduce their priority."""
         if key in self.responses:
             self.disliked_memory[key] += 1
-            return f"*hic!* Ah, you didn’t like responses for '{key}'! I'll use them less often."
-        return "Hmm, I don’t know that one yet. *hic!* Teach me first."
+            return f"*hic!* You didn’t like responses for '{key}'! I'll use them less often."
+        return "*hic!* I don’t know that one yet. Teach me first!"
 
     def learn_response(self, key, response):
+        """Add a new response for a specific key."""
         if key in self.responses:
             self.responses[key].append(response)
         else:
             self.responses[key] = [response]
-        return f"*hic!* Ah, I’ve learned something new for '{key}': {response}"
+        self.save_data()
+        return f"*hic!* I’ve learned something new for '{key}': {response}"
 
     def learn_meaning(self, word, meaning):
+        """Add a new word and its meaning."""
         self.meanings[word.lower()] = meaning
-        return f"*hic!* Ah, I now know that '{word}' means: {meaning}"
+        self.save_data()
+        return f"*hic!* I now know that '{word}' means: {meaning}"
 
     def get_response(self, user_input):
+        """Generate a response based on user input."""
         user_input = user_input.lower().strip()
 
+        # Handle questions about word meanings
         if user_input.startswith("what does") and user_input.endswith("mean"):
             word = user_input.replace("what does", "").replace("mean", "").strip()
             return self.meanings.get(word, f"*hic!* I don’t know what '{word}' means yet. Teach me, perhaps?")
 
-        for key, response_list in self.responses.items():
-            if key in user_input:
-                responses = self._apply_weighting(response_list, key)
-                return random.choice(responses)
+        # Check for exact matches or substring matches in user input
+        matched_responses = [
+            response_list
+            for key, response_list in self.responses.items()
+            if key in user_input
+        ]
 
-        return "Ah, that is a riddle even I cannot solve. *hic!* Ask again, but maybe slower?"
+        if matched_responses:
+            # Apply weighting if there are matches
+            response_list = matched_responses[0]  # Take the first matched response
+            responses = self._apply_weighting(response_list, user_input)
+            return random.choice(responses)
+
+        # Fallback response for unknown queries
+        return "*hic!* I'm not sure what you mean. Could you rephrase?"
 
     def _apply_weighting(self, response_list, key):
+        """Adjust response priorities based on user feedback."""
         responses = response_list[:]
         if key in self.reinforcement_memory:
             responses += response_list * self.reinforcement_memory[key]
         if key in self.disliked_memory:
             responses = responses[: max(1, len(responses) - self.disliked_memory[key])]
         return responses
+
+    def save_data(self):
+        """Save responses and meanings to a JSON file for persistence."""
+        data = {
+            "responses": self.responses,
+            "meanings": self.meanings,
+        }
+        with open(self.data_file, "w") as f:
+            json.dump(data, f, indent=4)
+
+    def load_data(self):
+        """Load responses and meanings from a JSON file."""
+        if os.path.exists(self.data_file):
+            with open(self.data_file, "r") as f:
+                data = json.load(f)
+                self.responses.update(data.get("responses", {}))
+                self.meanings.update(data.get("meanings", {}))
 
 
 class ChatApp:
@@ -88,7 +139,6 @@ class ChatApp:
 
         self.scrollbar = ttk.Scrollbar(self.chat_frame, command=self.text_widget.yview)
         self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
         self.text_widget.config(yscrollcommand=self.scrollbar.set)
 
         self.input_frame = tk.Frame(root)
@@ -118,18 +168,21 @@ class ChatApp:
         self.display_bot_message(self.bot.introduce())
 
     def display_bot_message(self, message):
+        """Display bot's messages."""
         self.text_widget.config(state=tk.NORMAL)
         self.text_widget.insert(tk.END, f"Mr. Klawmideya: {message}\n\n")
         self.text_widget.see(tk.END)
         self.text_widget.config(state=tk.DISABLED)
 
     def display_user_message(self, message):
+        """Display user's messages."""
         self.text_widget.config(state=tk.NORMAL)
         self.text_widget.insert(tk.END, f"You: {message}\n\n")
         self.text_widget.see(tk.END)
         self.text_widget.config(state=tk.DISABLED)
 
     def handle_user_input(self):
+        """Handle user input."""
         user_input = self.input_box.get().strip()
         if user_input:
             self.display_user_message(user_input)

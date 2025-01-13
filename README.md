@@ -55,21 +55,23 @@ Planned Features (Upcoming)
 Installation
 📥 Clone the repository:
 
-bash
+```bash
 Copy code
 git clone https://github.com/YourGitHubRepo/MrKlawmideya.git
 cd MrKlawmideya
+```
 📦 Install required dependencies:
 
-bash
+```bash
 Copy code
 pip install -r requirements.txt
+```
 ▶️ Run the chatbot:
 
-bash
+```bash
 Copy code
 python chatbot.py
-Save this README as your README.md and use it to track progress on your GitHub. Let me know if you'd like further tweaks!
+```
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

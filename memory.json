@@ -14,10 +14,14 @@
         ],
         "hello": [
             "Greetings, friend!"
+        ],
+        "Hey fucker!": [
+            "What do you want fucker! *hic!* How have you been!"
         ]
     },
     "meanings": {
-        "joy": "A feeling of great happiness."
+        "joy": "A feeling of great happiness.",
+        "Frog": "An amphibian that hops around and ribbits."
     },
     "synonyms": {
         "happy": [
